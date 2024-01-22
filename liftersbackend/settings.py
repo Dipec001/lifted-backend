@@ -31,7 +31,7 @@ load_dotenv()
 SECRET_KEY = "django-insecure-b5z_wc4aho#3jm^faji)*0q8zu1x%4i8dw0^2w2%zs1$kczsv8"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', default='False')
 
 ALLOWED_HOSTS = ['222c-105-113-32-241.ngrok-free.app','127.0.0.1']
 
