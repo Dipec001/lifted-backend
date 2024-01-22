@@ -34,7 +34,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', default='your secret key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', default='False')
 
-ALLOWED_HOSTS = ['222c-105-113-32-241.ngrok-free.app','127.0.0.1']
+ALLOWED_HOSTS = ['222c-105-113-32-241.ngrok-free.app', 'lifted.onrender.com', '127.0.0.1']
 
 
 # Application definition
