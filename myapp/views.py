@@ -12,6 +12,8 @@ import os
 from dotenv import load_dotenv
 from .serializers import CustomUserSerializer, FeedSerializer, CommentSerializer
 from rest_framework import status, permissions
+import uuid
+from rest_framework_simplejwt.tokens import RefreshToken
 
 load_dotenv()
 
@@ -30,28 +32,33 @@ class AppleLogin(APIView):
 
 
         # Verify and decode Apple ID token
+        
         decoded_token = self.verify_apple_token(apple_token)
+        print(f"decoded_token= {decoded_token}")
         if not decoded_token:
             return Response({'error': 'Invalid Apple ID token'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get user's Apple ID
         apple_id = decoded_token.get('sub')
 
-        # Extract profile user information
-        user_info = {
-            'name': decoded_token.get('name'),
-            'email': decoded_token.get('email'),
-            # 'profile_picture': decoded_token.get('picture'),
-            # Add any other fields you want to extract
-        }
-
         # Check if the user already exists
         try:
             social_account = SocialAccount.objects.get(uid=apple_id, provider='apple')
             user = social_account.user
         except SocialAccount.DoesNotExist:
+            # If it doesn't exist, get profile details from frontend, create a new user and associated social account
+
+            # Extract profile user information
+            user_info = {
+                'first_name': request.data.get('first_name'),
+                'last_name': request.data.get('last_name'),
+                'email': request.data.get('email'),
+                # 'profile_picture': decoded_token.get('picture'),
+                # Add any other fields you want to extract
+            }
+
             # User does not exist, create a new user
-            user = CustomUser.objects.create_user(username=user_info['email'], email=user_info['email'], first_name=user_info['name'])
+            user = CustomUser.objects.create_user(username=generate_unique_username(user_info['email'], user_info['first_name']), email=user_info['email'], first_name=user_info['first_name'], last_name=user_info['last_name'])
             user.save()
 
             # Create a SocialAccount entry for the user
@@ -66,14 +73,20 @@ class AppleLogin(APIView):
 
 
         # Exchange Apple token for access token and refresh token
-        token_response = self.exchange_apple_token(apple_token)
-        if 'error' in token_response:
-            return Response({'error': 'Failed to exchange Apple token'}, status=status.HTTP_400_BAD_REQUEST)
+        # token_response = self.exchange_apple_token(apple_token)
+        # if 'error' in token_response:
+        #     return Response({'error': 'Failed to exchange Apple token'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Your authentication logic (e.g., creating JWT token)
-        jwt_token = self.create_jwt_token(user.id)
+        # jwt_token = self.create_jwt_token(user.id)
 
-        return Response({'token': jwt_token}, status=status.HTTP_200_OK)
+        # return Response({'token': jwt_token}, status=status.HTTP_200_OK)
+            
+         # Use Simple JWT to generate access and refresh tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        return Response({'access_token': access_token, 'refresh_token': str(refresh)}, status=status.HTTP_200_OK)
 
     def verify_apple_token(self, apple_token):
         # Your implementation to verify and decode the Apple token
@@ -81,10 +94,16 @@ class AppleLogin(APIView):
             # Use your public key or the Apple public key to verify the signature
             # Your implementation here
             secret_key = os.getenv('client_secret')
-            decoded_token = jwt.decode(apple_token, algorithms='RS256', key=secret_key, audience=os.getenv('client_id'), issuer='https://appleid.apple.com')
+            decoded_token = jwt.decode(
+                apple_token,
+                algorithms='RS256',
+                key=secret_key,
+                audience=os.getenv('client_id'),
+                options={"verify_signature": False},
+                issuer='https://appleid.apple.com',)
             return decoded_token
         except jwt.JWTError as e:
-            return None
+            return str(e)
 
     def exchange_apple_token(self, apple_token):
         # Your implementation to exchange Apple token for access token and refresh token
@@ -118,6 +137,18 @@ class AppleLogin(APIView):
         token = jwt.encode(token_payload, secret_key, algorithm='HS256')
         # Return the generated JWT token
         return token
+
+def generate_unique_username(email, name):
+    # Combine email and name (or any other information) to create a base username
+    base_username = f"{name}_{email}"
+
+    # Generate a unique identifier using uuid4()
+    unique_id = str(uuid.uuid4())[:8]  # Take the first 8 characters for simplicity
+
+    # Combine the base username and unique identifier
+    unique_username = f"{base_username}_{unique_id}"
+
+    return unique_username
 
 
 # views.py
