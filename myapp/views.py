@@ -39,7 +39,10 @@ class AppleLogin(APIView):
             return Response({'error': 'Invalid Apple ID token'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get user's Apple ID
-        apple_id = decoded_token.get('sub')
+        try:
+            apple_id = decoded_token.get('sub')
+        except AttributeError:
+            return Response({'error':'Signature expired'})
 
         # Check if the user already exists
         try:
@@ -102,7 +105,7 @@ class AppleLogin(APIView):
                 options={"verify_signature": False},
                 issuer='https://appleid.apple.com',)
             return decoded_token
-        except jwt.JWTError as e:
+        except Exception as e:
             return str(e)
 
     def exchange_apple_token(self, apple_token):
