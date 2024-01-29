@@ -109,9 +109,16 @@ if DEBUG:
     }
 }
 else:
+    # DATABASES = {
+    #     'default': dj_database_url.parse(os.getenv('DATABASE_URL'))
+    # }
     DATABASES = {
-        'default': dj_database_url.parse(os.getenv('DATABASE_URL'))
-    }
+    'default': dj_database_url.config(
+        # Feel free to alter this value to suit your needs.
+        default=os.getenv("DATABASE_URL") ,
+        conn_max_age=600
+    )
+}
 
 
 # Password validation
