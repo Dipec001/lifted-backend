@@ -97,23 +97,23 @@ WSGI_APPLICATION = "liftersbackend.wsgi.application"
 #     }
 # }
 
-if DEBUG:
-    DATABASES = {
-    "default": {
-        "ENGINE": os.getenv("DB_ENGINE"),
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
-    }
+# if DEBUG:
+#     DATABASES = {
+#     "default": {
+#         "ENGINE": os.getenv("DB_ENGINE"),
+#         "NAME": os.getenv("DB_NAME"),
+#         "USER": os.getenv("DB_USER"),
+#         "PASSWORD": os.getenv("DB_PASSWORD"),
+#         "HOST": os.getenv("DB_HOST"),
+#         "PORT": os.getenv("DB_PORT"),
+#     }
+# }
+# else:
+print("Parsing DATABASE_URL:", os.getenv('DATABASE_URL'))
+DATABASES = {
+    "default": dj_database_url.parse(os.getenv('DATABASE_URL'))
 }
-else:
-    print("Parsing DATABASE_URL:", os.getenv('DATABASE_URL'))
-    DATABASES = {
-        "default": dj_database_url.parse(os.getenv('DATABASE_URL'))
-    }
-    print("Parsed DATABASES:", DATABASES)
+print("Parsed DATABASES:", DATABASES)
 
 
 # Password validation
