@@ -60,23 +60,23 @@ class AppleLogin(APIView):
                 # Add any other fields you want to extract
             }
             
-            try:
+            if not user_info['email']:
+                return Response[{'error':'New user: Email must be set'}]
 
-                # User does not exist, create a new user
-                user = CustomUser.objects.create_user(username=generate_unique_username(user_info['email'], user_info['first_name']), email=user_info['email'], first_name=user_info['first_name'], last_name=user_info['last_name'])
-                user.save()
 
-                # Create a SocialAccount entry for the user
-                SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
+            # User does not exist, create a new user
+            user = CustomUser.objects.create_user(username=generate_unique_username(user_info['email']), email=user_info['email'], first_name=user_info['first_name'], last_name=user_info['last_name'])
+            user.save()
 
-                # Prompt the user for profile details
-                user_serializer = CustomUserSerializer(instance=user, data=request.data)
-                if user_serializer.is_valid():
-                    user_serializer.save()
-                else:
-                    return Response({'error': user_serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
-                return Response({'error':f'{str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+            # Create a SocialAccount entry for the user
+            SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
+
+            # Prompt the user for profile details
+            user_serializer = CustomUserSerializer(instance=user, data=request.data)
+            if user_serializer.is_valid():
+                user_serializer.save()
+            else:
+                return Response({'error': user_serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
 
 
         # Exchange Apple token for access token and refresh token
@@ -145,9 +145,9 @@ class AppleLogin(APIView):
         # Return the generated JWT token
         return token
 
-def generate_unique_username(email, name):
+def generate_unique_username(email):
     # Combine email and name (or any other information) to create a base username
-    base_username = f"{name}_{email}"
+    base_username = f"{email}"
 
     # Generate a unique identifier using uuid4()
     unique_id = str(uuid.uuid4())[:8]  # Take the first 8 characters for simplicity
