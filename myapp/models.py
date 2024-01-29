@@ -4,29 +4,24 @@ from django.db import models
 from .choices import ARM_CHOICES
 from uuid import uuid4
 
-class CustomUserManager(BaseUserManager):
-    def create_user(self, email, username=None, password=None, **extra_fields):
-        if not email:
-            raise ValueError('The Email field must be set')
+# class CustomUserManager(BaseUserManager):
+#     def create_user(self, email, username=None, password=None, **extra_fields):
+#         if not email:
+#             raise ValueError('The Email field must be set')
         
-        email = self.normalize_email(email)
-        
-        # Check if the email is already taken
-        if self.model.objects.filter(email=email).exists():
-            raise ValueError('This email address is already in use')
+#         email = self.normalize_email(email)
+#         user = self.model(email=email, username=username, **extra_fields)
 
-        user = self.model(email=email, username=username, **extra_fields)
-        user.set_password(password)
-        
-        # Allow first_name and last_name to be optional
-        if 'first_name' in extra_fields and extra_fields['first_name']:
-            user.first_name = extra_fields['first_name']
-            
-        if 'last_name' in extra_fields and extra_fields['last_name']:
-            user.last_name = extra_fields['last_name']
-            
-        user.save(using=self._db)
-        return user
+#         if 'first_name' in extra_fields:
+#             user.first_name = extra_fields['first_name']
+
+#         if 'last_name' in extra_fields:
+#             user.last_name = extra_fields['last_name']
+
+#         user.set_password(password)
+#         user.save(using=self._db)
+#         return user
+
 
 
 
@@ -36,7 +31,10 @@ class CustomUser(AbstractUser):
     date_of_birth = models.DateField(null=True, blank=True)
     arm_choice = models.CharField(max_length=50, choices=ARM_CHOICES, blank=True)
 
-    objects = CustomUserManager()
+    first_name = models.CharField(max_length=30, blank=True, null=True)
+    last_name = models.CharField(max_length=30, blank=True, null=True)
+
+    # objects = CustomUserManager()
 
 
 class Feed(models.Model):

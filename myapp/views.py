@@ -60,10 +60,24 @@ class AppleLogin(APIView):
                 # Add any other fields you want to extract
             }
 
+            if not user_info['email']:
+                return Response({'error': 'New User: Must Provide Email'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if the email already exists
+            existing_user = CustomUser.objects.filter(email=user_info['email']).first()
+            if existing_user:
+                return Response({'error': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
             try:
                 # User does not exist, create a new user
-                user = CustomUser.objects.create_user(username=generate_unique_username(user_info['email']), email=user_info['email'], first_name=user_info['first_name'], last_name=user_info['last_name'])
+                user = CustomUser.objects.create_user(
+                email=user_info['email'],
+                username=generate_unique_username(user_info['email']),
+                first_name=user_info.get('first_name', ''),
+                last_name=user_info.get('last_name', '')
+                )
                 user.save()
+
 
                 # Create a SocialAccount entry for the user
                 SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
