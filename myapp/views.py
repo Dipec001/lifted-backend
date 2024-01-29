@@ -59,20 +59,24 @@ class AppleLogin(APIView):
                 # 'profile_picture': decoded_token.get('picture'),
                 # Add any other fields you want to extract
             }
+            
+            try:
 
-            # User does not exist, create a new user
-            user = CustomUser.objects.create_user(username=generate_unique_username(user_info['email'], user_info['first_name']), email=user_info['email'], first_name=user_info['first_name'], last_name=user_info['last_name'])
-            user.save()
+                # User does not exist, create a new user
+                user = CustomUser.objects.create_user(username=generate_unique_username(user_info['email'], user_info['first_name']), email=user_info['email'], first_name=user_info['first_name'], last_name=user_info['last_name'])
+                user.save()
 
-            # Create a SocialAccount entry for the user
-            SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
+                # Create a SocialAccount entry for the user
+                SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
 
-            # Prompt the user for profile details
-            user_serializer = CustomUserSerializer(instance=user, data=request.data)
-            if user_serializer.is_valid():
-                user_serializer.save()
-            else:
-                return Response({'error': user_serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
+                # Prompt the user for profile details
+                user_serializer = CustomUserSerializer(instance=user, data=request.data)
+                if user_serializer.is_valid():
+                    user_serializer.save()
+                else:
+                    return Response({'error': user_serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({'error':f'{str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
         # Exchange Apple token for access token and refresh token
