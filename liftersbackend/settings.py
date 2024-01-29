@@ -99,26 +99,20 @@ WSGI_APPLICATION = "liftersbackend.wsgi.application"
 
 if DEBUG:
     DATABASES = {
-    "default": {
-        "ENGINE": os.getenv("DB_ENGINE"),
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
+        "default": {
+            "ENGINE": os.getenv("DB_ENGINE"),
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "HOST": os.getenv("DB_HOST"),
+            "PORT": os.getenv("DB_PORT"),
+        }
     }
-}
 else:
-    # DATABASES = {
-    #     'default': dj_database_url.parse(os.getenv('DATABASE_URL'))
-    # }
     DATABASES = {
-    'default': dj_database_url.config(
-        # Feel free to alter this value to suit your needs.
-        default=os.getenv("DATABASE_URL") ,
-        conn_max_age=600
-    )
-}
+        "default": dj_database_url.parse(os.getenv('DATABASE_URL'))
+    }
+
 
 
 # Password validation
