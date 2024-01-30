@@ -60,9 +60,6 @@ class AppleLogin(APIView):
                 # Add any other fields you want to extract
             }
 
-            if not user_info['email']:
-                return Response({'error': 'New User: Must Provide Email'}, status=status.HTTP_400_BAD_REQUEST)
-
             # Check if the email already exists
             existing_user = CustomUser.objects.filter(email=user_info['email']).first()
             if existing_user:
