@@ -181,6 +181,7 @@ class AppleLogin(APIView):
 
         # Verify and decode Apple ID token
         decoded_token = self.verify_apple_token(apple_token)
+        print(decoded_token)
 
         if not decoded_token:
             return Response({'error': 'Invalid Apple ID token'}, status=status.HTTP_400_BAD_REQUEST)
@@ -282,6 +283,7 @@ class UserRegistration(APIView):
 
         # Decode Apple ID token if provided
         decoded_token = self.verify_apple_token(apple_token)
+        print(decoded_token)
         if not decoded_token:
             return Response({'error': 'Invalid Apple ID token'}, status=status.HTTP_400_BAD_REQUEST)
         apple_id = decoded_token.get('sub')

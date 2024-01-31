@@ -26,15 +26,15 @@ from uuid import uuid4
 
 
 class CustomUser(AbstractUser):
-    height = models.FloatField(null=True, blank=True)
-    weight = models.FloatField(null=True, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
-    arm_choice = models.CharField(max_length=50, choices=ARM_CHOICES, blank=True)
+    height = models.CharField(max_length=10, blank=True, null=True)
+    weight = models.CharField(max_length=10, blank=True, null=True)
+    date_of_birth = models.CharField(max_length=15)
+    arm_choice = models.CharField(max_length=50, choices=ARM_CHOICES)
 
     first_name = models.CharField(max_length=30, blank=True, null=True)
     last_name = models.CharField(max_length=30, blank=True, null=True)
-
     # objects = CustomUserManager()
+
 
 
 class Feed(models.Model):
