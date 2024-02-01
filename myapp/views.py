@@ -22,6 +22,10 @@ def index(request):
     return HttpResponse({'detail'})
 
 
+def trigger_error(request):
+    division_by_zero = 1 / 0
+
+
 # class AppleLogin(APIView):
 #     def post(self, request):
 #         # Handle Sign in with Apple token
@@ -313,22 +317,27 @@ class UserRegistration(APIView):
             existing_user = CustomUser.objects.filter(email=email).first()
             if existing_user:
                 return Response({'error': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            
 
-            # Create a new user
-            user = CustomUser.objects.create_user(
+
+            # Create a new user without saving to the database yet
+            user = CustomUser(
                 email=email,
                 username=self.generate_unique_username(email),
                 first_name=first_name,
                 last_name=last_name
             )
 
-            # Create a SocialAccount entry for the user
-            SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
 
-            # Optionally, prompt the user for additional profile details
+            # Validate the user without saving
             user_serializer = CustomUserSerializer(instance=user, data=request.data)
             if user_serializer.is_valid():
+
+                # Save the user to the database
                 user_serializer.save()
+
+                # Create a SocialAccount entry for the user
+                SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
 
                 # Generate access and refresh tokens for the new user
                 return self.generate_tokens_response(user)

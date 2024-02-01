@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
     path('', views.index, name='home'),
+    path('sentry-debug/', views.trigger_error),
     path('apple/login/', views.AppleLogin.as_view(), name='apple-login'),
     path('apple/register/', views.UserRegistration.as_view(), name='apple-register'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

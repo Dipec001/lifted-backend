@@ -24,6 +24,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
 
+# settings.py
+
+# settings.py
+import sentry_sdk
+
+sentry_sdk.init(
+    dsn="https://aca0891bb3702e7a66c250bcd383964a@o4506672264314880.ingest.sentry.io/4506672652681217",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    traces_sample_rate=1.0,
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=1.0,
+)
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
