@@ -165,9 +165,10 @@ class UserRegistration(APIView):
             first_name = request.data.get('first_name')
             last_name = request.data.get('last_name')
             email = request.data.get('email')
+            username = request.data.get('username')
 
             # Validate and create the user
-            if not all([first_name, last_name, email]):
+            if not all([first_name, last_name, email, username]):
                 return Response({'error': 'Incomplete user details'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Check if the email already exists
@@ -180,7 +181,7 @@ class UserRegistration(APIView):
             # Create a new user without saving to the database yet
             user = CustomUser(
                 email=email,
-                username=self.generate_unique_username(email),
+                username=username,
                 first_name=first_name,
                 last_name=last_name
             )
@@ -223,18 +224,18 @@ class UserRegistration(APIView):
         access_token = str(refresh.access_token)
         return Response({'access_token': access_token, 'refresh_token': str(refresh)}, status=status.HTTP_200_OK)
 
-    # The rest of the code (generate_unique_username, etc.) remains unchanged
-    def generate_unique_username(self, email):
-        # Combine email and name (or any other information) to create a base username
-        base_username = f"{email}"
+    # # The rest of the code (generate_unique_username, etc.) remains unchanged
+    # def generate_unique_username(self, email):
+    #     # Combine email and name (or any other information) to create a base username
+    #     base_username = f"{email}"
 
-        # Generate a unique identifier using uuid4()
-        unique_id = str(uuid.uuid4())[:8]  # Take the first 8 characters for simplicity
+    #     # Generate a unique identifier using uuid4()
+    #     unique_id = str(uuid.uuid4())[:8]  # Take the first 8 characters for simplicity
 
-        # Combine the base username and unique identifier
-        unique_username = f"{base_username}_{unique_id}"
+    #     # Combine the base username and unique identifier
+    #     unique_username = f"{base_username}_{unique_id}"
 
-        return unique_username
+    #     return unique_username
 
 
 # views.py
@@ -642,3 +643,31 @@ class AddSetAPIView(APIView):
             return Response({"detail": "Set added successfully"}, status=status.HTTP_201_CREATED)
         except SelectedExercise.DoesNotExist:
             return Response({"detail": "Selected exercise not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+from .serializers import FollowingSerializer
+from .models import UserFollowing
+
+class FollowAPIView(APIView):
+    """
+    View to follow and unfollow
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk, *args, **kwargs):
+        """Follow User"""
+        user = request.user
+        following_to_user = get_object_or_404(CustomUser, pk=pk)
+
+        if user == following_to_user:
+            return Response({'error': 'You cannot follow yourself'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user in following_to_user.followers.all():
+            return Response({'error': 'You are already following this user'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        # Create a new instance of UserFollowing to represent the follow action
+        follow_instance = UserFollowing.objects.create(user_id=user, following_user_id=following_to_user)
+
+        # Serialize the follow action
+        serializer = FollowingSerializer(follow_instance)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -112,21 +112,21 @@ WSGI_APPLICATION = "liftersbackend.wsgi.application"
 #     }
 # }
 
-if DEBUG:
-    DATABASES = {
-    "default": {
-        "ENGINE": os.getenv("DB_ENGINE"),
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
-    }
+# if DEBUG:
+#     DATABASES = {
+#     "default": {
+#         "ENGINE": os.getenv("DB_ENGINE"),
+#         "NAME": os.getenv("DB_NAME"),
+#         "USER": os.getenv("DB_USER"),
+#         "PASSWORD": os.getenv("DB_PASSWORD"),
+#         "HOST": os.getenv("DB_HOST"),
+#         "PORT": os.getenv("DB_PORT"),
+#     }
+# }
+# else:
+DATABASES = {
+    "default": dj_database_url.parse(os.getenv('DATABASE_URL'))
 }
-else:
-    DATABASES = {
-        "default": dj_database_url.parse(os.getenv('DATABASE_URL'))
-    }
 
 
 # Password validation
@@ -175,6 +175,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 AUTH_USER_MODEL = 'myapp.CustomUser'
+
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # settings.py

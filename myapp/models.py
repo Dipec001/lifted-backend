@@ -10,6 +10,8 @@ class CustomUser(AbstractUser):
     weight = models.CharField(max_length=10, blank=True, null=True)
     date_of_birth = models.CharField(max_length=15)
     arm_choice = models.CharField(max_length=50, choices=ARM_CHOICES)
+    bio = models.TextField(blank=True, null=True)
+    profile_photo = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
 
     first_name = models.CharField(max_length=30, blank=True, null=True)
     last_name = models.CharField(max_length=30, blank=True, null=True)
@@ -87,3 +89,20 @@ class Set(models.Model):
 
     def __str__(self):
         return f"Set for {self.selected_exercise}"
+    
+
+class UserFollowing(models.Model):
+    user_id =models.ForeignKey(CustomUser, on_delete=models.CASCADE ,related_name="following")
+    following_user_id = models.ForeignKey(CustomUser,on_delete=models.CASCADE, related_name="follower")
+    # To add info about when user started following
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user_id','following_user_id'],  name="unique_followers")
+        ]
+
+        ordering = ["-created"]
+
+    def __str__(self):
+        f"{self.user_id} follows {self.following_user_id}"

@@ -1,12 +1,13 @@
 # serializers.py
 from rest_framework import serializers
-from .models import CustomUser, Feed, Like, Comment, Exercise, WorkoutType, UserWorkout, SelectedExercise
+from .models import CustomUser, Feed, Like, Comment, Exercise, WorkoutType, UserWorkout, SelectedExercise, UserFollowing
 from rest_framework.exceptions import ValidationError
 
 class CustomUserSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = CustomUser
-        fields = ['height', 'weight', 'date_of_birth', 'arm_choice']
+        fields = ['height', 'weight', 'date_of_birth', 'arm_choice', 'bio','profile_picture', 'first_name','last_name']
 
 
 class UserCreationSerializer(serializers.ModelSerializer):
@@ -49,20 +50,21 @@ class FeedSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = Set
 #         fields = ['id', 'reps', 'weight']
-
-class ExerciseSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(required=False)  # Make the name field optional
-
-    class Meta:
-        model = Exercise
-        fields = ['id', 'name']
-
-
 class WorkoutTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WorkoutType
         fields = ['id', 'name']
+
+class ExerciseSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(required=False)  # Make the name field optional
+    # workout_type = WorkoutTypeSerializer()
+    workout_type = serializers.PrimaryKeyRelatedField(queryset=WorkoutType.objects.all(), source='workout_type.id')
+
+
+    class Meta:
+        model = Exercise
+        fields = ['id', 'name','workout_type']
 
 class SelectedExerciseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -78,11 +80,12 @@ class UserWorkoutSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'title', 'selected_exercises']
 
 
-    def create(self, validated_data):
-        selected_exercises_data = validated_data.pop('selected_exercises')
-        user_workout = UserWorkout.objects.create(**validated_data)
-        print(user_workout)
-        for selected_exercise_data in selected_exercises_data:
-            SelectedExercise.objects.create(user_workout=user_workout, **selected_exercise_data)
-        return user_workout
+class FollowingSerializer(serializers.ModelSerializer):
 
+    class Meta:
+        model = UserFollowing
+        fields = ("id", "following_user_id", "created")
+class FollowerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserFollowing
+        fields = ("id", "user_id", "created")
