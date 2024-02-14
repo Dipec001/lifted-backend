@@ -1,29 +1,9 @@
 # Create your models here.
-from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from .choices import ARM_CHOICES
 from uuid import uuid4
-
-# class CustomUserManager(BaseUserManager):
-#     def create_user(self, email, username=None, password=None, **extra_fields):
-#         if not email:
-#             raise ValueError('The Email field must be set')
-        
-#         email = self.normalize_email(email)
-#         user = self.model(email=email, username=username, **extra_fields)
-
-#         if 'first_name' in extra_fields:
-#             user.first_name = extra_fields['first_name']
-
-#         if 'last_name' in extra_fields:
-#             user.last_name = extra_fields['last_name']
-
-#         user.set_password(password)
-#         user.save(using=self._db)
-#         return user
-
-
-
+from datetime import timezone
 
 class CustomUser(AbstractUser):
     height = models.CharField(max_length=10, blank=True, null=True)
@@ -33,7 +13,6 @@ class CustomUser(AbstractUser):
 
     first_name = models.CharField(max_length=30, blank=True, null=True)
     last_name = models.CharField(max_length=30, blank=True, null=True)
-    # objects = CustomUserManager()
 
 
 
@@ -44,8 +23,9 @@ class Feed(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    # New field to track the number of likes
+    # New field to track the number of likes and comments
     likes_count = models.PositiveIntegerField(default=0)
+    comments_count = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.title
@@ -70,9 +50,40 @@ class Comment(models.Model):
     
 
 
+class WorkoutType(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+class Exercise(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    workout_type = models.ForeignKey(WorkoutType, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.name} ({self.workout_type.name})"
+
+class UserWorkout(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    title = models.CharField(max_length=255, default='Workout🔥')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+class SelectedExercise(models.Model):
+    user_workout = models.ForeignKey('UserWorkout', on_delete=models.CASCADE)
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.user_workout} - {self.exercise}"
+    
 
 
-# Create a model for the workout that includes:
-# A title (Charfield)
-# The type of exercise (dropdown menu with multiple choices - Choice Field)
-# The duration of the workout in minutes (Integer field)
+class Set(models.Model):
+    reps = models.PositiveIntegerField(default=12)
+    weight = models.PositiveIntegerField(default=12)
+    selected_exercise = models.ForeignKey(SelectedExercise, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"Set for {self.selected_exercise}"

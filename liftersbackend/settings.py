@@ -24,21 +24,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
 
-# settings.py
 
 # settings.py
 import sentry_sdk
 
-sentry_sdk.init(
-    dsn="https://aca0891bb3702e7a66c250bcd383964a@o4506672264314880.ingest.sentry.io/4506672652681217",
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    traces_sample_rate=1.0,
-    # Set profiles_sample_rate to 1.0 to profile 100%
-    # of sampled transactions.
-    # We recommend adjusting this value in production.
-    profiles_sample_rate=1.0,
-)
+# sentry_sdk.init(
+#     dsn="https://aca0891bb3702e7a66c250bcd383964a@o4506672264314880.ingest.sentry.io/4506672652681217",
+#     # Set traces_sample_rate to 1.0 to capture 100%
+#     # of transactions for performance monitoring.
+#     traces_sample_rate=1.0,
+#     # Set profiles_sample_rate to 1.0 to profile 100%
+#     # of sampled transactions.
+#     # We recommend adjusting this value in production.
+#     profiles_sample_rate=1.0,
+# )
 
 
 # Quick-start development settings - unsuitable for production
@@ -48,7 +47,7 @@ sentry_sdk.init(
 SECRET_KEY = os.getenv('SECRET_KEY', default='your secret key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', default='False')
+DEBUG = os.getenv('DEBUG', default='False').lower() == "true"
 
 ALLOWED_HOSTS = ['222c-105-113-32-241.ngrok-free.app', 'lifted.onrender.com', '127.0.0.1']
 
@@ -113,23 +112,21 @@ WSGI_APPLICATION = "liftersbackend.wsgi.application"
 #     }
 # }
 
-# if DEBUG:
-#     DATABASES = {
-#     "default": {
-#         "ENGINE": os.getenv("DB_ENGINE"),
-#         "NAME": os.getenv("DB_NAME"),
-#         "USER": os.getenv("DB_USER"),
-#         "PASSWORD": os.getenv("DB_PASSWORD"),
-#         "HOST": os.getenv("DB_HOST"),
-#         "PORT": os.getenv("DB_PORT"),
-#     }
-# }
-# else:
-# print("Parsing DATABASE_URL:", os.getenv('DATABASE_URL'))
-DATABASES = {
-    "default": dj_database_url.parse(os.getenv('DATABASE_URL'))
+if DEBUG:
+    DATABASES = {
+    "default": {
+        "ENGINE": os.getenv("DB_ENGINE"),
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST"),
+        "PORT": os.getenv("DB_PORT"),
+    }
 }
-# print("Parsed DATABASES:", DATABASES)
+else:
+    DATABASES = {
+        "default": dj_database_url.parse(os.getenv('DATABASE_URL'))
+    }
 
 
 # Password validation
@@ -220,7 +217,7 @@ SOCIALACCOUNT_PROVIDERS = {
 # settings.py
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
     'SLIDING_TOKEN_LIFETIME': timedelta(days=14),
