@@ -389,6 +389,7 @@ class UserWorkoutListCreateAPIView(APIView):
         Returns:
             JsonResponse: JsonResponse containing serialized data of all user workouts.
         """
+        print(f"Request headers: {request.headers}")
         user_workouts = UserWorkout.objects.filter(user=request.user).prefetch_related('selectedexercise_set__set_set')
         user_workouts_data = []
 
@@ -466,8 +467,6 @@ class UserWorkoutListCreateAPIView(APIView):
 
         return JsonResponse({"detail": "User workout created successfully"}, status=201)
 
-    
-
 
 class UserWorkoutRetrieveUpdateView(APIView):
     """
@@ -479,6 +478,7 @@ class UserWorkoutRetrieveUpdateView(APIView):
         """
         Retrieve one User workout
         """
+        print(f"Request headers: {request.headers}")
         try:
             # Retrieve a specific user workout by its primary key (pk)
             user_workout = get_object_or_404(UserWorkout, pk=pk, user=request.user)

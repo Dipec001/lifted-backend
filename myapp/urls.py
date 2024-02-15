@@ -30,5 +30,4 @@ urlpatterns = [
 
     #Profile Update
     path('profile/<int:pk>/', views.ProfileRetrieveUpdateAPIView.as_view(), name='profile-detail'),
-
 ]
