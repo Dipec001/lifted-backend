@@ -24,8 +24,11 @@ urlpatterns = [
     path('delete-set/<int:set_id>/', views.DeleteSetAPIView.as_view(), name='delete_set'),
     path('add-set/<int:selected_exercise_id>/', views.AddSetAPIView.as_view(), name='add_set'),
 
-    #FOllow
+    #FOllow/Unfollow
     path('follow/<int:pk>/', views.FollowAPIView.as_view(), name='follow'),
-    # path('unfollow/<int:pk>/', views.UnFollowAPIView.as_view(), name='unfollow'),
+    path('unfollow/<int:pk>/', views.UnFollowAPIView.as_view(), name='unfollow'),
+
+    #Profile Update
+    path('profile/<int:pk>/', views.ProfileRetrieveUpdateAPIView.as_view(), name='profile-detail'),
 
 ]

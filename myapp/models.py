@@ -16,6 +16,26 @@ class CustomUser(AbstractUser):
     first_name = models.CharField(max_length=30, blank=True, null=True)
     last_name = models.CharField(max_length=30, blank=True, null=True)
 
+    @property
+    def followers_count(self):
+        return self.followers.count()
+    
+    def get_feeds_count(self):
+        return self.feed_set.count()
+    
+    def get_interactions_count(self):
+        # Get all feeds associated with the user
+        user_feeds = self.feed_set.all()
+        
+        # Sum the likes_count and comments_count from each feed
+        likes_count = sum(feed.likes_count for feed in user_feeds)
+        comments_count = sum(feed.comments_count for feed in user_feeds)
+        
+        # Return the total interactions count
+        return likes_count + comments_count
+    
+    
+
 
 
 class Feed(models.Model):
@@ -93,7 +113,7 @@ class Set(models.Model):
 
 class UserFollowing(models.Model):
     user_id =models.ForeignKey(CustomUser, on_delete=models.CASCADE ,related_name="following")
-    following_user_id = models.ForeignKey(CustomUser,on_delete=models.CASCADE, related_name="follower")
+    following_user_id = models.ForeignKey(CustomUser,on_delete=models.CASCADE, related_name="followers")
     # To add info about when user started following
     created = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -105,4 +125,4 @@ class UserFollowing(models.Model):
         ordering = ["-created"]
 
     def __str__(self):
-        f"{self.user_id} follows {self.following_user_id}"
+        return f"{self.user_id} follows {self.following_user_id}"

@@ -4,11 +4,20 @@ from .models import CustomUser, Feed, Like, Comment, Exercise, WorkoutType, User
 from rest_framework.exceptions import ValidationError
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    followers_count = serializers.IntegerField(read_only=True)
+    feeds_count = serializers.SerializerMethodField()
+    interactions_count = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ['height', 'weight', 'date_of_birth', 'arm_choice', 'bio','profile_picture', 'first_name','last_name']
+        fields = ['first_name','last_name','height', 'weight', 'date_of_birth', 'arm_choice', 'bio', 'profile_photo', 'followers_count', 'feeds_count','interactions_count']
 
+
+    def get_feeds_count(self, obj):
+        return obj.get_feeds_count()
+
+    def get_interactions_count(self, obj):
+        return obj.get_interactions_count()
 
 class UserCreationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

@@ -18,6 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
+from .permissions import IsOwnerOrReadOnly
 
 
 load_dotenv()
@@ -65,12 +66,27 @@ class AppleLogin(APIView):
         # If it's a new user, return a flag indicating so
         if new_user:
             return Response({'new_user': True}, status=status.HTTP_200_OK)
+        
+        # Otherwise, authenticate the existing user and return their data
+        serializer = CustomUserSerializer(user)
 
-        # If it's an existing user, generate access and refresh tokens
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
+        # Generate access and refresh tokens for the new user
+        tokens_data = self.generate_tokens_response(user)
 
-        return Response({'access_token': access_token, 'refresh_token': str(refresh)}, status=status.HTTP_200_OK)
+        user_data = serializer.data
+
+        # Include the access and refresh tokens in the response
+        user_data.update(tokens_data)
+
+        return Response(user_data, status=status.HTTP_200_OK)
+
+        # return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # # If it's an existing user, generate access and refresh tokens
+        # refresh = RefreshToken.for_user(user)
+        # access_token = str(refresh.access_token)
+
+        # return Response({'access_token': access_token, 'refresh_token': str(refresh)}, status=status.HTTP_200_OK)
 
     def verify_apple_token(self, apple_token):
         # Your implementation to verify and decode the Apple token
@@ -87,51 +103,30 @@ class AppleLogin(APIView):
             return decoded_token
         except Exception as e:
             return None  # Return None instead of str(e) to distinguish from valid decoding
+        
+    def generate_tokens_response(self, user):
+        # Generate access and refresh tokens for the user
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        return {'access_token': access_token, 'refresh_token': str(refresh)}
 
-    def exchange_apple_token(self, apple_token):
-        # Your implementation to exchange Apple token for access token and refresh token
-        token_endpoint = 'https://appleid.apple.com/auth/token'
-        client_id = os.getenv('client_id')
-        client_secret = os.getenv('client_secret')
-        redirect_uri = os.getenv('redirect_uri')
+    # def exchange_apple_token(self, apple_token):
+    #     # Your implementation to exchange Apple token for access token and refresh token
+    #     token_endpoint = 'https://appleid.apple.com/auth/token'
+    #     client_id = os.getenv('client_id')
+    #     client_secret = os.getenv('client_secret')
+    #     redirect_uri = os.getenv('redirect_uri')
 
-        data = {
-            'client_id': client_id,
-            'client_secret': client_secret,
-            'code': apple_token,
-            'grant_type': 'authorization_code',
-            'redirect_uri': redirect_uri,
-        }
+    #     data = {
+    #         'client_id': client_id,
+    #         'client_secret': client_secret,
+    #         'code': apple_token,
+    #         'grant_type': 'authorization_code',
+    #         'redirect_uri': redirect_uri,
+    #     }
 
-        response = requests.post(token_endpoint, data=data)
-        return response.json()
-
-    def create_jwt_token(self, user_id):
-        # Your implementation to create a JWT token
-        # Include necessary claims such as 'exp', 'iat', etc.
-        secret_key = os.getenv('client_secret')  # Replace 'your-secret-key' with the actual secret key
-        token_payload = {
-            'user_id': user_id,
-            'exp': datetime.utcnow() + timedelta(days=1),  # Token expiration time (adjust as needed)
-            'iat': datetime.utcnow(),  # Issued at time
-            # Add any other claims we want in the token
-        }
-
-        token = jwt.encode(token_payload, secret_key, algorithm='HS256')
-        # Return the generated JWT token
-        return token
-
-    def generate_unique_username(self, email):
-        # Combine email and name (or any other information) to create a base username
-        base_username = f"{email}"
-
-        # Generate a unique identifier using uuid4()
-        unique_id = str(uuid.uuid4())[:8]  # Take the first 8 characters for simplicity
-
-        # Combine the base username and unique identifier
-        unique_username = f"{base_username}_{unique_id}"
-
-        return unique_username
+    #     response = requests.post(token_endpoint, data=data)
+    #     return response.json()
 
 
 class UserRegistration(APIView):
@@ -157,7 +152,20 @@ class UserRegistration(APIView):
         try:
             social_account = SocialAccount.objects.get(uid=apple_id, provider='apple')
             user = social_account.user
-            return self.generate_tokens_response(user)
+
+            # Otherwise, authenticate the existing user and return their data
+            serializer = CustomUserSerializer(user)
+
+            # Generate access and refresh tokens for the new user
+            tokens_data = self.generate_tokens_response(user)
+
+            user_data = serializer.data
+
+            # Include the access and refresh tokens in the response
+            user_data.update(tokens_data)
+
+            return Response(user_data, status=status.HTTP_200_OK)
+            # return self.generate_tokens_response(user)
         except SocialAccount.DoesNotExist:
             # If it doesn't exist, it's a new user
 
@@ -190,7 +198,6 @@ class UserRegistration(APIView):
             # Validate the user without saving
             user_serializer = CustomUserSerializer(instance=user, data=request.data)
             if user_serializer.is_valid():
-
                 # Save the user to the database
                 user_serializer.save()
 
@@ -198,7 +205,15 @@ class UserRegistration(APIView):
                 SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
 
                 # Generate access and refresh tokens for the new user
-                return self.generate_tokens_response(user)
+                tokens_data = self.generate_tokens_response(user)
+
+                # Serialize the user with CustomUserSerializer
+                user_data = user_serializer.data
+
+                # Include the access and refresh tokens in the response
+                user_data.update(tokens_data)
+
+                return Response(user_data, status=status.HTTP_200_OK)
             else:
                 return Response({'error': user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -222,20 +237,7 @@ class UserRegistration(APIView):
         # Generate access and refresh tokens for the user
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
-        return Response({'access_token': access_token, 'refresh_token': str(refresh)}, status=status.HTTP_200_OK)
-
-    # # The rest of the code (generate_unique_username, etc.) remains unchanged
-    # def generate_unique_username(self, email):
-    #     # Combine email and name (or any other information) to create a base username
-    #     base_username = f"{email}"
-
-    #     # Generate a unique identifier using uuid4()
-    #     unique_id = str(uuid.uuid4())[:8]  # Take the first 8 characters for simplicity
-
-    #     # Combine the base username and unique identifier
-    #     unique_username = f"{base_username}_{unique_id}"
-
-    #     return unique_username
+        return {'access_token': access_token, 'refresh_token': str(refresh)}
 
 
 # views.py
@@ -646,10 +648,11 @@ class AddSetAPIView(APIView):
         
 from .serializers import FollowingSerializer
 from .models import UserFollowing
+from django.db import IntegrityError
 
 class FollowAPIView(APIView):
     """
-    View to follow and unfollow
+    View to follow
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -661,13 +664,69 @@ class FollowAPIView(APIView):
         if user == following_to_user:
             return Response({'error': 'You cannot follow yourself'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if user in following_to_user.followers.all():
+        try:
+            # Attempt to create a new instance of UserFollowing to represent the follow action
+            follow_instance = UserFollowing.objects.create(user_id=user, following_user_id=following_to_user)
+        except IntegrityError:
+            # If the follow relationship already exists, return an error response
             return Response({'error': 'You are already following this user'}, status=status.HTTP_406_NOT_ACCEPTABLE)
-
-        # Create a new instance of UserFollowing to represent the follow action
-        follow_instance = UserFollowing.objects.create(user_id=user, following_user_id=following_to_user)
+        
 
         # Serialize the follow action
         serializer = FollowingSerializer(follow_instance)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UnFollowAPIView(APIView):
+    """
+    View to undo follow (unfollow).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def delete(self, request, pk, *args, **kwargs):
+        """Unfollow User."""
+        user = request.user
+        
+        # Retrieve the specific follow record for this user/followee
+        following_in_question = get_object_or_404(UserFollowing, user_id=user, following_user_id=pk)
+
+        # Delete the follow record
+        following_in_question.delete()
+        
+        return Response({'success': 'Unfollowed successfully'}, status=status.HTTP_204_NO_CONTENT)
+    
+
+class ProfileRetrieveUpdateAPIView(APIView):
+    """
+    Update Profile Details
+    """
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    def get(self, request, pk, *args, **kwargs):
+        """
+        Get Profile Details
+        """
+        # Retrieve the profile of the specified user
+        user = get_object_or_404(CustomUser, pk=pk)
+        
+        # Serialize the profile data
+        serializer = CustomUserSerializer(user)
+        return Response(serializer.data)
+
+    def put(self, request, pk, *args, **kwargs):
+        """
+        Update Profile Details
+        """
+        # Retrieve the profile of the specified user
+        user = get_object_or_404(CustomUser, pk=pk)
+
+        # Check if the requesting user is the owner of the profile
+        self.check_object_permissions(request, user)
+
+        # Check if the request data is valid
+        serializer = CustomUserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
