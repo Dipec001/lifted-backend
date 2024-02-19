@@ -6,7 +6,8 @@ urlpatterns = [
     path('', views.index, name='home'),
     path('sentry-debug/', views.trigger_error),
     path('apple/login/', views.AppleLogin.as_view(), name='apple-login'),
-    path('apple/register/', views.UserRegistration.as_view(), name='apple-register'),
+    # path('apple/register/', views.UserRegistration.as_view(), name='apple-register'),
+    path('onboard/', views.OnBoardingView.as_view(), name='onboard'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('register/', views.UserRegistrationView.as_view(), name='user-registration'),
@@ -30,4 +31,7 @@ urlpatterns = [
 
     #Profile Update
     path('profile/<int:pk>/', views.ProfileRetrieveUpdateAPIView.as_view(), name='profile-detail'),
+
+    # path('workout-groups/', views.WorkoutGroupAPIView.as_view(), name='workout_groups'),
+    # path('custom-workouts/', views.CustomWorkoutAPIView.as_view(), name='custom_workouts'),
 ]

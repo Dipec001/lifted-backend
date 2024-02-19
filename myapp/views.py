@@ -6,11 +6,13 @@ from rest_framework import status
 from allauth.socialaccount.models import SocialAccount
 from jose import jwt  # Install jose library: pip install python-jose
 from .models import CustomUser, Feed, Like, Comment, WorkoutType, Exercise, UserWorkout, SelectedExercise, Set
+# WorkoutGroup, CustomWorkout
 import requests
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-from .serializers import CustomUserSerializer, FeedSerializer, CommentSerializer, WorkoutTypeSerializer,ExerciseSerializer, UserWorkoutSerializer
+from .serializers import CustomUserSerializer, FeedSerializer, CommentSerializer, WorkoutTypeSerializer,ExerciseSerializer, OnboardSerializer
+# WorkoutGroupSerializer, CustomWorkoutSerializer
 from django.db.models import Prefetch
 from rest_framework import status, permissions
 import uuid
@@ -53,40 +55,115 @@ class AppleLogin(APIView):
             apple_id = decoded_token.get('sub')
         except AttributeError:
             return Response({'error': 'Signature expired'})
+        
+        try:
+            # Attempt to retrieve the email from the decoded token
+            email = decoded_token.get('email')
+            print(email)
+
+            if not email:
+                # If the email field is missing from the token
+                return Response({'error': 'Email not found in token'}, status=status.HTTP_400_BAD_REQUEST)
+
+        except AttributeError:
+            # If the decoded token doesn't have a get method or is not a dictionary-like object
+            return Response({'error': 'Invalid token format'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if the user already exists
         try:
             social_account = SocialAccount.objects.get(uid=apple_id, provider='apple')
             user = social_account.user
             new_user = False
+
+            # Authenticate the existing user and return their data
+            serializer = CustomUserSerializer(user)
+
+            # Generate access and refresh tokens for the new user
+            tokens_data = self.generate_tokens_response(user)
+
+            user_data = serializer.data
+
+            # Include the access and refresh tokens in the response
+            user_data.update(tokens_data)
+            user_data.update({'is_new_user': False})
+
+
+            return Response(user_data, status=status.HTTP_200_OK)
         except SocialAccount.DoesNotExist:
             # If it doesn't exist, it's a new user
-            new_user = True
-
-        # If it's a new user, return a flag indicating so
-        if new_user:
-            return Response({'new_user': True}, status=status.HTTP_200_OK)
+            is_new_user = True
         
-        # Otherwise, authenticate the existing user and return their data
-        serializer = CustomUserSerializer(user)
+            # Check if the email already exists
+            existing_user = CustomUser.objects.filter(email=email).first()
+            if existing_user:
+                return Response({'error': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            
 
-        # Generate access and refresh tokens for the new user
-        tokens_data = self.generate_tokens_response(user)
+            # Create a new user without saving to the database yet
+            user = CustomUser(
+                email=email,
+                username=email,  # Use the same value as the email by default
+            )
+            user.save()
 
-        user_data = serializer.data
+            # Create a SocialAccount entry for the user
+            SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
 
-        # Include the access and refresh tokens in the response
-        user_data.update(tokens_data)
+            # Authenticate the existing user and return their data
+            serializer = CustomUserSerializer(user)
 
-        return Response(user_data, status=status.HTTP_200_OK)
+            # Generate access and refresh tokens for the new user
+            tokens_data = self.generate_tokens_response(user)
 
-        # return Response(serializer.data, status=status.HTTP_200_OK)
+            user_data = serializer.data
 
-        # # If it's an existing user, generate access and refresh tokens
-        # refresh = RefreshToken.for_user(user)
-        # access_token = str(refresh.access_token)
+            # Include the access and refresh tokens in the response
+            user_data.update(tokens_data)
+            user_data.update({'is_new_user': True})
 
-        # return Response({'access_token': access_token, 'refresh_token': str(refresh)}, status=status.HTTP_200_OK)
+
+            return Response(user_data, status=status.HTTP_200_OK)
+
+            # # Validate the user without saving
+            # user_serializer = CustomUserSerializer(instance=user, data=request.data)
+            # if user_serializer.is_valid():
+            #     # Save the user to the database
+            #     user_serializer.save()
+
+            #     # Create a SocialAccount entry for the user
+            #     SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
+
+            #     # Generate access and refresh tokens for the new user
+            #     tokens_data = self.generate_tokens_response(user)
+
+            #     # Serialize the user with CustomUserSerializer
+            #     user_data = user_serializer.data
+
+            #     # Include the access and refresh tokens in the response
+            #     user_data.update(tokens_data)
+
+            #     return Response(user_data, status=status.HTTP_200_OK)
+            # else:
+            #     return Response({'error': user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+            # If it's a new user, return a flag indicating so
+            # if new_user:
+            #     return Response({'is_new_user': True}, status=status.HTTP_200_OK)
+        
+        # # Otherwise, authenticate the existing user and return their data
+        # serializer = CustomUserSerializer(user)
+
+        # # Generate access and refresh tokens for the new user
+        # tokens_data = self.generate_tokens_response(user)
+
+        # user_data = serializer.data
+
+        # # Include the access and refresh tokens in the response
+        # user_data.update(tokens_data)
+
+        # return Response(user_data, status=status.HTTP_200_OK)
 
     def verify_apple_token(self, apple_token):
         # Your implementation to verify and decode the Apple token
@@ -127,6 +204,31 @@ class AppleLogin(APIView):
 
     #     response = requests.post(token_endpoint, data=data)
     #     return response.json()
+
+class OnBoardingView(APIView):
+    """
+    This view is used to onboard/register a user
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            user = CustomUser.objects.get(pk=request.user.pk)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Invalid User"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        data = request.data
+        serializer = OnboardSerializer(user, data=data, partial=True)  # Using partial=True to allow partial updates
+        if serializer.is_valid():
+            with transaction.atomic():
+                serializer.save()
+
+                # Add is_new_user = False to the serialized data
+                serialized_data = serializer.data
+                serialized_data.update({'is_new_user': False})
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserRegistration(APIView):
@@ -730,3 +832,40 @@ class ProfileRetrieveUpdateAPIView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+# class WorkoutGroupAPIView(APIView):
+#     """
+#     API endpoint for creating and retrieving workout groups.
+#     """
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def post(self, request):
+#         serializer = WorkoutGroupSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#     def get(self, request):
+#         workout_groups = WorkoutGroup.objects.all()
+#         serializer = WorkoutGroupSerializer(workout_groups, many=True)
+#         return Response(serializer.data)
+
+
+# class CustomWorkoutAPIView(APIView):
+#     """
+#     API endpoint for creating and retrieving custom workouts.
+#     """
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def post(self, request):
+#         serializer = CustomWorkoutSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#     def get(self, request):
+#         custom_workouts = CustomWorkout.objects.all()
+#         serializer = CustomWorkoutSerializer(custom_workouts, many=True)
+#         return Response(serializer.data)
