@@ -7,15 +7,15 @@ from rest_framework.exceptions import ValidationError
 
 class CustomUserSerializer(serializers.ModelSerializer):
     followers_count = serializers.IntegerField(read_only=True)
-    feeds_count = serializers.SerializerMethodField()
+    posts_count = serializers.SerializerMethodField()
     interactions_count = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ['id','first_name','last_name','height', 'height_measurement', 'weight', 'weight_measurement', 'date_of_birth', 'arm_choice', 'bio', 'profile_photo', 'followers_count', 'feeds_count','interactions_count', 'email','username']
+        fields = ['id','full_name','height', 'height_measurement', 'weight', 'weight_measurement', 'date_of_birth', 'arm_choice', 'bio', 'profile_photo', 'followers_count', 'posts_count','interactions_count', 'email','username']
 
 
-    def get_feeds_count(self, obj):
+    def get_posts_count(self, obj):
         return obj.get_feeds_count()
 
     def get_interactions_count(self, obj):
@@ -24,16 +24,16 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 class OnboardSerializer(serializers.ModelSerializer):
     followers_count = serializers.IntegerField(read_only=True)
-    feeds_count = serializers.SerializerMethodField()
+    posts_count = serializers.SerializerMethodField()
     interactions_count = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ['id','first_name','last_name','height', 'height_measurement', 'weight', 'height_measurement', 'date_of_birth', 'arm_choice', 'bio', 'profile_photo', 'followers_count', 'feeds_count','interactions_count','username']
+        fields = ['id','full_name','height', 'height_measurement', 'weight', 'height_measurement', 'date_of_birth', 'arm_choice', 'bio', 'profile_photo', 'followers_count', 'posts_count','interactions_count','username']
         read_only_fields = ['email']  # Make the email field read-only
 
 
-    def get_feeds_count(self, obj):
+    def get_posts_count(self, obj):
         return obj.get_feeds_count()
 
     def get_interactions_count(self, obj):

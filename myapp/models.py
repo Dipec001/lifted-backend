@@ -46,8 +46,7 @@ class CustomUser(AbstractUser):
     bio = models.TextField(blank=True, null=True)
     profile_photo = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
 
-    first_name = models.CharField(max_length=30, blank=True, null=True)
-    last_name = models.CharField(max_length=30, blank=True, null=True)
+    full_name = models.CharField(max_length=100, blank=True, null=True)
 
     # USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
