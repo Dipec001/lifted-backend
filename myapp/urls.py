@@ -32,6 +32,6 @@ urlpatterns = [
     #Profile Update
     path('profile/<int:pk>/', views.ProfileRetrieveUpdateAPIView.as_view(), name='profile-detail'),
 
-    # path('workout-groups/', views.WorkoutGroupAPIView.as_view(), name='workout_groups'),
-    # path('custom-workouts/', views.CustomWorkoutAPIView.as_view(), name='custom_workouts'),
+    path('workout-groups/', views.WorkoutGroupAPIView.as_view(), name='workout_groups'),
+    path('custom-workouts/', views.CustomWorkoutAPIView.as_view(), name='custom_workouts'),
 ]

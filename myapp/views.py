@@ -5,14 +5,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from allauth.socialaccount.models import SocialAccount
 from jose import jwt  # Install jose library: pip install python-jose
-from .models import CustomUser, Feed, Like, Comment, WorkoutType, Exercise, UserWorkout, SelectedExercise, Set
-# WorkoutGroup, CustomWorkout
+from .models import CustomUser, Feed, Like, Comment, WorkoutType, Exercise, UserWorkout, SelectedExercise, Set, WorkoutGroup, CustomWorkout
 import requests
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-from .serializers import CustomUserSerializer, FeedSerializer, CommentSerializer, WorkoutTypeSerializer,ExerciseSerializer, OnboardSerializer
-# WorkoutGroupSerializer, CustomWorkoutSerializer
+from .serializers import (CustomUserSerializer, FeedSerializer, CommentSerializer, WorkoutTypeSerializer,ExerciseSerializer
+                          , OnboardSerializer, WorkoutGroupSerializer, CustomWorkoutSerializer, WorkoutSessionSerializer, ZoneSerializer, WorkoutSetSerializer)
 from django.db.models import Prefetch
 from rest_framework import status, permissions
 import uuid
@@ -129,47 +128,6 @@ class AppleLogin(APIView):
 
 
             return Response(user_data, status=status.HTTP_200_OK)
-
-            # # Validate the user without saving
-            # user_serializer = CustomUserSerializer(instance=user, data=request.data)
-            # if user_serializer.is_valid():
-            #     # Save the user to the database
-            #     user_serializer.save()
-
-            #     # Create a SocialAccount entry for the user
-            #     SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
-
-            #     # Generate access and refresh tokens for the new user
-            #     tokens_data = self.generate_tokens_response(user)
-
-            #     # Serialize the user with CustomUserSerializer
-            #     user_data = user_serializer.data
-
-            #     # Include the access and refresh tokens in the response
-            #     user_data.update(tokens_data)
-
-            #     return Response(user_data, status=status.HTTP_200_OK)
-            # else:
-            #     return Response({'error': user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-            # If it's a new user, return a flag indicating so
-            # if new_user:
-            #     return Response({'is_new_user': True}, status=status.HTTP_200_OK)
-        
-        # # Otherwise, authenticate the existing user and return their data
-        # serializer = CustomUserSerializer(user)
-
-        # # Generate access and refresh tokens for the new user
-        # tokens_data = self.generate_tokens_response(user)
-
-        # user_data = serializer.data
-
-        # # Include the access and refresh tokens in the response
-        # user_data.update(tokens_data)
-
-        # return Response(user_data, status=status.HTTP_200_OK)
 
     def verify_apple_token(self, apple_token):
         # Your implementation to verify and decode the Apple token
@@ -757,22 +715,72 @@ class ProfileRetrieveUpdateAPIView(APIView):
 #         workout_groups = WorkoutGroup.objects.all()
 #         serializer = WorkoutGroupSerializer(workout_groups, many=True)
 #         return Response(serializer.data)
+import json
+from .models import WorkoutSession, Zone, WorkoutSet
+
+class WorkoutGroupAPIView(APIView):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            start_time = data.get('start_time')
+            end_time = data.get('end_time')
+            total_hr_points = data.get('total_hr_points', 0)
+            avg_heart_rate_per_min = data.get('avg_heart_rate_per_min')
+            zones = data.get('zones', [])
+            sets = data.get('sets', [])
+
+            if not start_time:
+                return JsonResponse({"detail": "Start time is required."}, status=400)
+
+            with transaction.atomic():
+                workout_group = WorkoutGroup.objects.create()
+                workout_session = WorkoutSession.objects.create(
+                    start_time=start_time,
+                    end_time=end_time,
+                    total_hr_points=total_hr_points,
+                    avg_heart_rate_per_min=avg_heart_rate_per_min,
+                    group=workout_group
+                )
+
+                # Create zones
+                for zone_data in zones:
+                    zone = Zone.objects.create(
+                        workout_session=workout_session,
+                        zone_number=zone_data.get('zone_number'),
+                        duration=zone_data.get('duration'),
+                        hr_points=zone_data.get('hr_points')
+                    )
+
+                # Create workout sets
+                for set_data in sets:
+                    workout_set = WorkoutSet.objects.create(
+                        workout_session=workout_session,
+                        reps=set_data.get('reps'),
+                        weight=set_data.get('weight'),
+                        avg_heart_rate=set_data.get('avg_heart_rate')
+                    )
+
+            return JsonResponse({"detail": "Workout group created successfully."}, status=201)
+
+        except Exception as e:
+            return JsonResponse({"detail": str(e)}, status=400)
 
 
-# class CustomWorkoutAPIView(APIView):
-#     """
-#     API endpoint for creating and retrieving custom workouts.
-#     """
-#     permission_classes = [permissions.IsAuthenticated]
 
-#     def post(self, request):
-#         serializer = CustomWorkoutSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class CustomWorkoutAPIView(APIView):
+    """
+    API endpoint for creating and retrieving custom workouts.
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
-#     def get(self, request):
-#         custom_workouts = CustomWorkout.objects.all()
-#         serializer = CustomWorkoutSerializer(custom_workouts, many=True)
-#         return Response(serializer.data)
+    def post(self, request):
+        serializer = CustomWorkoutSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        custom_workouts = CustomWorkout.objects.all()
+        serializer = CustomWorkoutSerializer(custom_workouts, many=True)
+        return Response(serializer.data)

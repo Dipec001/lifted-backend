@@ -1,9 +1,8 @@
 # serializers.py
 from rest_framework import serializers
 from .models import (CustomUser, Feed, Like, Comment, Exercise, WorkoutType, UserWorkout, SelectedExercise, UserFollowing,
-                      )
-# WorkoutGroup, WorkoutSession, Zone, WorkoutSet, CustomWorkout, CustomWorkoutSession, CustomZone
-from rest_framework.exceptions import ValidationError
+                      WorkoutGroup, WorkoutSession, Zone, WorkoutSet, CustomWorkout, CustomWorkoutSession, CustomZone)
+from datetime import timedelta
 
 class CustomUserSerializer(serializers.ModelSerializer):
     followers_count = serializers.IntegerField(read_only=True)
@@ -119,65 +118,96 @@ class FollowerSerializer(serializers.ModelSerializer):
         model = UserFollowing
         fields = ("id", "user_id", "created")
 
+class ZoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Zone
+        fields = ['zone_number', 'duration', 'hr_points']
 
-# class ZoneSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Zone
-#         fields = ['zone_number', 'duration', 'hr_points']
+class WorkoutSetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkoutSet
+        fields = ['reps', 'weight', 'avg_heart_rate']
 
-# class WorkoutGroupSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = WorkoutGroup
-#         fields = '__all__'
+class WorkoutSessionSerializer(serializers.ModelSerializer):
+    zones = ZoneSerializer(many=True)
+    sets = WorkoutSetSerializer(many=True)
 
-# class CustomWorkoutSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = CustomWorkout
-#         fields = '__all__'
+    class Meta:
+        model = WorkoutSession
+        fields = ['session_id', 'start_time', 'end_time', 'total_hr_points', 'avg_heart_rate_per_min', 'zones', 'sets']
+        read_only_fields = ['group']  # Ensure group is read-only
 
-# class WorkoutSetSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = WorkoutSet
-#         fields = ['reps', 'weight', 'avg_heart_rate']
+    def create(self, validated_data):
+        zones_data = validated_data.pop('zones', [])
+        sets_data = validated_data.pop('sets', [])
+        workout_session = WorkoutSession.objects.create(**validated_data)
 
-# class WorkoutSessionSerializer(serializers.ModelSerializer):
-#     zones = ZoneSerializer(many=True)
-#     sets = WorkoutSetSerializer(many=True)
+        for zone_data in zones_data:
+            Zone.objects.create(workout_session=workout_session, **zone_data)
 
-#     class Meta:
-#         model = WorkoutSession
-#         fields = ['session_id', 'start_time', 'end_time', 'total_hr_points', 'avg_heart_rate_per_min', 'zones', 'sets']
+        for set_data in sets_data:
+            WorkoutSet.objects.create(workout_session=workout_session, **set_data)
 
-#     def create(self, validated_data):
-#         zones_data = validated_data.pop('zones')
-#         sets_data = validated_data.pop('sets')
-#         workout_session = WorkoutSession.objects.create(**validated_data)
+        return workout_session
+
+class WorkoutGroupSerializer(serializers.ModelSerializer):
+    workout_session = WorkoutSessionSerializer(many=True)
+
+    class Meta:
+        model = WorkoutGroup
+        fields = ['workout_session']
+
+    def create(self, validated_data):
+        workout_sessions_data = validated_data.pop('workout_session', [])
+        workout_group = WorkoutGroup.objects.create()
+
+        for session_data in workout_sessions_data:
+            zones_data = session_data.pop('zones', [])
+            sets_data = session_data.pop('sets', [])
+
+            workout_session = WorkoutSession.objects.create(group=workout_group, **session_data)
+
+            for zone_data in zones_data:
+                Zone.objects.create(workout_session=workout_session, **zone_data)
+
+            for set_data in sets_data:
+                WorkoutSet.objects.create(workout_session=workout_session, **set_data)
+
+        return workout_group
+
+class CustomWorkoutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomWorkout
+        fields = '__all__'
+
+
+class CustomZoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomZone
+        fields = ['zone_number', 'duration', 'hr_points']
+
+class CustomWorkoutSessionSerializer(serializers.ModelSerializer):
+    custom_zones = CustomZoneSerializer(many=True)
+
+    class Meta:
+        model = CustomWorkoutSession
+        fields = ['session_id', 'start_time', 'end_time', 'timer_result', 'avg_heart_rate_per_min', 'total_hr_points', 'custom_zones']
+
+    def create(self, validated_data):
+        custom_zones_data = validated_data.pop('custom_zones')
+
+        # Convert duration from seconds to timedelta
+        duration_seconds = validated_data.pop('timer_result', 0)
+        duration_timedelta = timedelta(seconds=duration_seconds)
+
+        # Create CustomWorkoutSession instance
+        custom_workout_session = CustomWorkoutSession.objects.create(
+            **validated_data,
+            timer_result=duration_timedelta
+        )
         
-#         for zone_data in zones_data:
-#             Zone.objects.create(workout_session=workout_session, **zone_data)
+        # Create associated CustomZone instances
+        for zone_data in custom_zones_data:
+            CustomZone.objects.create(workout_session=custom_workout_session, **zone_data)
         
-#         for set_data in sets_data:
-#             WorkoutSet.objects.create(workout_session=workout_session, **set_data)
-        
-#         return workout_session
-
-# class CustomZoneSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = CustomZone
-#         fields = ['zone_number', 'duration', 'hr_points']
-
-# class CustomWorkoutSessionSerializer(serializers.ModelSerializer):
-#     custom_zones = CustomZoneSerializer(many=True)
-
-#     class Meta:
-#         model = CustomWorkoutSession
-#         fields = ['session_id', 'start_time', 'end_time', 'timer_result', 'avg_heart_rate_per_min', 'total_hr_points', 'custom_zones']
-
-#     def create(self, validated_data):
-#         custom_zones_data = validated_data.pop('custom_zones')
-#         custom_workout_session = CustomWorkoutSession.objects.create(**validated_data)
-        
-#         for zone_data in custom_zones_data:
-#             CustomZone.objects.create(workout_session=custom_workout_session, **zone_data)
-        
-#         return custom_workout_session
+        return custom_workout_session

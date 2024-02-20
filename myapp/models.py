@@ -47,6 +47,8 @@ class CustomUser(AbstractUser):
     profile_photo = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
 
     full_name = models.CharField(max_length=100, blank=True, null=True)
+    first_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
 
     # USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -163,56 +165,58 @@ class UserFollowing(models.Model):
         return f"{self.user_id} follows {self.following_user_id}"
     
 
-# class WorkoutGroup(models.Model):
-#     workout_id = models.UUIDField(default=uuid4, editable=False, unique=True)
+class WorkoutGroup(models.Model):
+    workout_id = models.UUIDField(default=uuid4, editable=False, unique=True)
 
-# class WorkoutSession(models.Model):
-#     session_id = models.UUIDField(default=uuid4, editable=False, unique=True)
-#     start_time = models.DateTimeField()
-#     end_time = models.DateTimeField(null=True, blank=True)
-#     total_hr_points = models.IntegerField(default=0)
-#     avg_heart_rate_per_min = models.FloatField(null=True, blank=True)  # Average heart rate per minute for the entire session
-
-# class Zone(models.Model):
-#     workout_session = models.ForeignKey(WorkoutSession, related_name='zones', on_delete=models.CASCADE)
-#     zone_number = models.PositiveIntegerField()
-#     duration = models.DurationField()
-#     hr_points = models.IntegerField()
-
-#     class Meta:
-#         unique_together = ('workout_session', 'zone_number')
-
-# class WorkoutSet(models.Model):
-#     """A set of workouts done."""
-#     reps = models.PositiveIntegerField()
-#     weight = models.PositiveIntegerField()
-#     avg_heart_rate = models.FloatField(null=True, blank=True)
-#     workout_session = models.ForeignKey(WorkoutSession, on_delete=models.CASCADE, related_name='sets')
+class WorkoutSession(models.Model):
+    session_id = models.UUIDField(default=uuid4, editable=False, unique=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)
+    total_hr_points = models.IntegerField(default=0)
+    avg_heart_rate_per_min = models.FloatField(null=True, blank=True)  # Average heart rate per minute for the entire session
+    group = models.ForeignKey(WorkoutGroup, on_delete=models.CASCADE)
 
 
+class Zone(models.Model):
+    workout_session = models.ForeignKey(WorkoutSession, related_name='zones', on_delete=models.CASCADE)
+    zone_number = models.PositiveIntegerField()
+    duration = models.DurationField()
+    hr_points = models.IntegerField()
+
+    class Meta:
+        unique_together = ('workout_session', 'zone_number')
+
+class WorkoutSet(models.Model):
+    """A set of workouts done."""
+    reps = models.PositiveIntegerField()
+    weight = models.PositiveIntegerField()
+    avg_heart_rate = models.FloatField(null=True, blank=True)
+    workout_session = models.ForeignKey(WorkoutSession, on_delete=models.CASCADE, related_name='sets')
 
 
-# class CustomWorkout(models.Model):
-#     """Represents a template for a custom workout."""
-#     workout_id = models.UUIDField(default=uuid4, editable=False, unique=True)
-#     # Add other fields specific to the custom workout
 
-# class CustomWorkoutSession(models.Model):
-#     """Represents a recorded session of a custom workout."""
-#     session_id = models.UUIDField(default=uuid4, editable=False, unique=True)
-#     start_time = models.DateTimeField()
-#     end_time = models.DateTimeField(null=True, blank=True)
-#     timer_result = models.IntegerField()  # Timer result in seconds
-#     avg_heart_rate_per_min = models.FloatField(null=True, blank=True)
-#     total_hr_points = models.IntegerField(default=0)
-#     custom_workout = models.ForeignKey(CustomWorkout, on_delete=models.CASCADE)
 
-# class CustomZone(models.Model):
-#     """Represents a specific zone within a custom workout session."""
-#     workout_session = models.ForeignKey(CustomWorkoutSession, related_name='zones', on_delete=models.CASCADE)
-#     zone_number = models.PositiveIntegerField()
-#     duration = models.DurationField()
-#     hr_points = models.IntegerField()
+class CustomWorkout(models.Model):
+    """Represents a template for a custom workout."""
+    workout_id = models.UUIDField(default=uuid4, editable=False, unique=True)
+    # Add other fields specific to the custom workout
 
-#     class Meta:
-#         unique_together = ('workout_session', 'zone_number')  # Ensure uniqueness of zones within a session
+class CustomWorkoutSession(models.Model):
+    """Represents a recorded session of a custom workout."""
+    session_id = models.UUIDField(default=uuid4, editable=False, unique=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)
+    timer_result = models.IntegerField()  # Timer result in seconds
+    avg_heart_rate_per_min = models.FloatField(null=True, blank=True)
+    total_hr_points = models.IntegerField(default=0)
+    custom_workout = models.ForeignKey(CustomWorkout, on_delete=models.CASCADE)
+
+class CustomZone(models.Model):
+    """Represents a specific zone within a custom workout session."""
+    workout_session = models.ForeignKey(CustomWorkoutSession, related_name='zones', on_delete=models.CASCADE)
+    zone_number = models.PositiveIntegerField()
+    duration = models.DurationField()
+    hr_points = models.IntegerField()
+
+    class Meta:
+        unique_together = ('workout_session', 'zone_number')  # Ensure uniqueness of zones within a session
