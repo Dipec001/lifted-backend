@@ -87,6 +87,9 @@ class AppleLogin(APIView):
             user_data.update(tokens_data)
             user_data.update({'is_new_user': False})
 
+            if user_data['username'] == user_data['email']:
+                user_data['username'] = None
+
 
             return Response(user_data, status=status.HTTP_200_OK)
         except SocialAccount.DoesNotExist:
@@ -120,6 +123,9 @@ class AppleLogin(APIView):
             # Include the access and refresh tokens in the response
             user_data.update(tokens_data)
             user_data.update({'is_new_user': True})
+
+            if user_data['username'] == user_data['email']:
+                user_data['username'] = None
 
 
             return Response(user_data, status=status.HTTP_200_OK)
@@ -218,129 +224,30 @@ class OnBoardingView(APIView):
             return Response({"error": "Invalid User"}, status=status.HTTP_401_UNAUTHORIZED)
 
         data = request.data
+        # Convert username to lowercase if provided
+        if 'username' in data:
+            data['username'] = data['username'].lower()
+        
+        
         serializer = OnboardSerializer(user, data=data, partial=True)  # Using partial=True to allow partial updates
         if serializer.is_valid():
             with transaction.atomic():
+
+                print(data)
+
                 serializer.save()
 
                 # Add is_new_user = False to the serialized data
-                serialized_data = serializer.data
-                serialized_data.update({'is_new_user': False})
+                user_data = serializer.data
+                user_data['is_new_user'] = False
+                # serialized_data.update({'is_new_user': False})
+                if 'username' not in data and  user.username.lower() == user.email.lower():
+                    print(f"Email:{user.email}")
+                    print(f"Username:{user.username}")
+                    user_data['username'] = None
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(user_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class UserRegistration(APIView):
-    def post(self, request):
-        # Extract the Apple token from the request
-        apple_token = request.data.get('apple_token')
-
-        if not apple_token:
-            return Response({'error': 'Apple token is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Decode Apple ID token if provided
-        decoded_token = self.verify_apple_token(apple_token)
-        print(decoded_token)
-        if not decoded_token:
-            return Response({'error': 'Invalid Apple ID token'}, status=status.HTTP_400_BAD_REQUEST)
-        apple_id = decoded_token.get('sub')
-
-        # and create the user
-        if not apple_id:
-            return Response({'error': 'Invalid Apple ID or missing user identifier'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if the user already exists
-        try:
-            social_account = SocialAccount.objects.get(uid=apple_id, provider='apple')
-            user = social_account.user
-
-            # Otherwise, authenticate the existing user and return their data
-            serializer = CustomUserSerializer(user)
-
-            # Generate access and refresh tokens for the new user
-            tokens_data = self.generate_tokens_response(user)
-
-            user_data = serializer.data
-
-            # Include the access and refresh tokens in the response
-            user_data.update(tokens_data)
-
-            return Response(user_data, status=status.HTTP_200_OK)
-            # return self.generate_tokens_response(user)
-        except SocialAccount.DoesNotExist:
-            # If it doesn't exist, it's a new user
-
-            # Example: Extracting additional details from the request
-            first_name = request.data.get('first_name')
-            last_name = request.data.get('last_name')
-            email = request.data.get('email')
-            username = request.data.get('username')
-
-            # Validate and create the user
-            if not all([first_name, last_name, email, username]):
-                return Response({'error': 'Incomplete user details'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Check if the email already exists
-            existing_user = CustomUser.objects.filter(email=email).first()
-            if existing_user:
-                return Response({'error': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
-            
-
-
-            # Create a new user without saving to the database yet
-            user = CustomUser(
-                email=email,
-                username=username,
-                first_name=first_name,
-                last_name=last_name
-            )
-
-
-            # Validate the user without saving
-            user_serializer = CustomUserSerializer(instance=user, data=request.data)
-            if user_serializer.is_valid():
-                # Save the user to the database
-                user_serializer.save()
-
-                # Create a SocialAccount entry for the user
-                SocialAccount.objects.create(user=user, uid=apple_id, provider='apple')
-
-                # Generate access and refresh tokens for the new user
-                tokens_data = self.generate_tokens_response(user)
-
-                # Serialize the user with CustomUserSerializer
-                user_data = user_serializer.data
-
-                # Include the access and refresh tokens in the response
-                user_data.update(tokens_data)
-
-                return Response(user_data, status=status.HTTP_200_OK)
-            else:
-                return Response({'error': user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-    def verify_apple_token(self, apple_token):
-        # Your implementation to verify and decode the Apple token
-        try:
-            # Use your public key or the Apple public key to verify the signature
-            secret_key = os.getenv('client_secret')
-            decoded_token = jwt.decode(
-                apple_token,
-                algorithms='RS256',
-                key=secret_key,
-                audience=os.getenv('client_id'),
-                options={"verify_signature": False},
-                issuer='https://appleid.apple.com',)
-            return decoded_token
-        except Exception as e:
-            return None  # Return None instead of str(e) to distinguish from valid decoding
-
-    def generate_tokens_response(self, user):
-        # Generate access and refresh tokens for the user
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-        return {'access_token': access_token, 'refresh_token': str(refresh)}
-
 
 # views.py
 
