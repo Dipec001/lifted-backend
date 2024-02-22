@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import CustomUser, Comment, Like, Feed, Exercise, WorkoutType, UserWorkout, Set, SelectedExercise, UserFollowing
+from .models import (CustomUser, Comment, Like, Feed, Exercise, WorkoutType, UserWorkout, Set, SelectedExercise, UserFollowing,
+                      WorkoutGroup, WorkoutSession, WorkoutSet, Zone, CustomWorkout, CustomWorkoutSession, CustomZone)
 # Register your models here.
 admin.site.register(CustomUser)
 admin.site.register(Comment)
@@ -11,3 +12,10 @@ admin.site.register(UserWorkout)
 admin.site.register(SelectedExercise)
 admin.site.register(Set)
 admin.site.register(UserFollowing)
+admin.site.register(WorkoutGroup)
+admin.site.register(WorkoutSession)
+admin.site.register(WorkoutSet)
+admin.site.register(Zone)
+admin.site.register(CustomWorkout)
+admin.site.register(CustomWorkoutSession)
+admin.site.register(CustomZone)

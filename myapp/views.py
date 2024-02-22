@@ -82,13 +82,15 @@ class AppleLogin(APIView):
 
             user_data = serializer.data
 
+            if user_data['username'] == user_data['email']:
+                user_data['is_new_user'] = True
+                user_data['username'] = None
+            else:
+                #new user attr when username is not set as False
+                user_data.update({'is_new_user': False})
+
             # Include the access and refresh tokens in the response
             user_data.update(tokens_data)
-            user_data.update({'is_new_user': False})
-
-            if user_data['username'] == user_data['email']:
-                user_data['username'] = None
-
 
             return Response(user_data, status=status.HTTP_200_OK)
         except SocialAccount.DoesNotExist:
@@ -186,6 +188,9 @@ class OnBoardingView(APIView):
         if 'username' in data:
             data['username'] = data['username'].lower()
         
+        if user.username == user.email and 'username' not in data:
+            return Response({"error": "Username is required"})
+        
         
         serializer = OnboardSerializer(user, data=data, partial=True)  # Using partial=True to allow partial updates
         if serializer.is_valid():
@@ -195,17 +200,28 @@ class OnBoardingView(APIView):
 
                 serializer.save()
 
+                # Generate access and refresh tokens for the new user
+                tokens_data = self.generate_tokens_response(user)
+
                 # Add is_new_user = False to the serialized data
                 user_data = serializer.data
+
+                user_data.update(tokens_data)
                 user_data['is_new_user'] = False
                 # serialized_data.update({'is_new_user': False})
                 if 'username' not in data and  user.username.lower() == user.email.lower():
-                    print(f"Email:{user.email}")
-                    print(f"Username:{user.username}")
                     user_data['username'] = None
+
+                
 
             return Response(user_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def generate_tokens_response(self, user):
+        # Generate access and refresh tokens for the user
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        return {'access_token': access_token, 'refresh_token': str(refresh)}
 
 # views.py
 
@@ -717,51 +733,110 @@ class ProfileRetrieveUpdateAPIView(APIView):
 #         return Response(serializer.data)
 import json
 from .models import WorkoutSession, Zone, WorkoutSet
-
 class WorkoutGroupAPIView(APIView):
+    """View to create a workout Group
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            workout_groups = WorkoutGroup.objects.filter(workoutsession__group__user=user).distinct()
+            response_data = []
+
+            for group in workout_groups:
+                workout_sessions = []
+                sessions = group.workoutsession_set.all()
+
+                for session in sessions:
+                    zones = []
+                    session_zones = session.zones.all()
+
+                    for zone in session_zones:
+                        zones.append({
+                            "zone_number": zone.zone_number,
+                            "duration": str(zone.duration),
+                            "hr_points": zone.hr_points
+                        })
+
+                    sets = []
+                    session_sets = session.sets.all()
+
+                    for workout_set in session_sets:
+                        sets.append({
+                            "reps": workout_set.reps,
+                            "weight": workout_set.weight,
+                            "avg_heart_rate": workout_set.avg_heart_rate
+                        })
+
+                    workout_sessions.append({
+                        "start_time": session.start_time.isoformat(),
+                        "end_time": session.end_time.isoformat() if session.end_time else None,
+                        "total_hr_points": session.total_hr_points,
+                        "avg_heart_rate_per_min": session.avg_heart_rate_per_min,
+                        "zones": zones,
+                        "sets": sets
+                    })
+
+                response_data.append({"workout_sessions": workout_sessions})
+
+            return JsonResponse(response_data, status=200)
+
+        except Exception as e:
+            return JsonResponse({"detail": str(e)}, status=400)
+        
     def post(self, request):
         try:
-            data = json.loads(request.body)
-            start_time = data.get('start_time')
-            end_time = data.get('end_time')
-            total_hr_points = data.get('total_hr_points', 0)
-            avg_heart_rate_per_min = data.get('avg_heart_rate_per_min')
-            zones = data.get('zones', [])
-            sets = data.get('sets', [])
+            data = request.data.get('workout_session')  # Access 'workout_session' key
 
-            if not start_time:
-                return JsonResponse({"detail": "Start time is required."}, status=400)
+            if not data:
+                return JsonResponse({"detail": "Workout session data is required."}, status=400)
 
             with transaction.atomic():
                 workout_group = WorkoutGroup.objects.create()
-                workout_session = WorkoutSession.objects.create(
-                    start_time=start_time,
-                    end_time=end_time,
-                    total_hr_points=total_hr_points,
-                    avg_heart_rate_per_min=avg_heart_rate_per_min,
-                    group=workout_group
-                )
 
-                # Create zones
-                for zone_data in zones:
-                    zone = Zone.objects.create(
-                        workout_session=workout_session,
-                        zone_number=zone_data.get('zone_number'),
-                        duration=zone_data.get('duration'),
-                        hr_points=zone_data.get('hr_points')
+                for session_data in data:  # Iterate over each workout session
+                    start_time = session_data.get('start_time')
+                    end_time = session_data.get('end_time')
+                    total_hr_points = session_data.get('total_hr_points', 0)
+                    avg_heart_rate_per_min = session_data.get('avg_heart_rate_per_min')
+                    zones = session_data.get('zones', [])
+                    sets = session_data.get('sets', [])
+
+                    if not start_time:
+                        return JsonResponse({"detail": "Start time is required."}, status=400)
+
+                    num_zones = len(zones)
+                    if num_zones != 5:
+                        raise ValueError("This session does not have 5 zones.")
+
+                    workout_session = WorkoutSession.objects.create(
+                        start_time=start_time,
+                        end_time=end_time,
+                        total_hr_points=total_hr_points,
+                        avg_heart_rate_per_min=avg_heart_rate_per_min,
+                        group=workout_group
                     )
 
-                # Create workout sets
-                for set_data in sets:
-                    workout_set = WorkoutSet.objects.create(
-                        workout_session=workout_session,
-                        reps=set_data.get('reps'),
-                        weight=set_data.get('weight'),
-                        avg_heart_rate=set_data.get('avg_heart_rate')
-                    )
+                    # Create zones
+                    for zone_data in zones:
+                        zone = Zone.objects.create(
+                            workout_session=workout_session,
+                            zone_number=zone_data.get('zone_number'),
+                            duration=zone_data.get('duration'),
+                            hr_points=zone_data.get('hr_points')
+                        )
+
+                    # Create workout sets
+                    for set_data in sets:
+                        workout_set = WorkoutSet.objects.create(
+                            workout_session=workout_session,
+                            reps=set_data.get('reps'),
+                            weight=set_data.get('weight'),
+                            avg_heart_rate=set_data.get('avg_heart_rate')
+                        )
 
             return JsonResponse({"detail": "Workout group created successfully."}, status=201)
-
         except Exception as e:
             return JsonResponse({"detail": str(e)}, status=400)
 

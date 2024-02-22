@@ -33,5 +33,6 @@ urlpatterns = [
     path('profile/<int:pk>/', views.ProfileRetrieveUpdateAPIView.as_view(), name='profile-detail'),
 
     path('workout-groups/', views.WorkoutGroupAPIView.as_view(), name='workout_groups'),
+    path('workout-groups/<uuid:workout_group_id>/', views.WorkoutGroupAPIView.as_view(), name='workout_group_detail'),
     path('custom-workouts/', views.CustomWorkoutAPIView.as_view(), name='custom_workouts'),
 ]
