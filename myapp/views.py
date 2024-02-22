@@ -713,6 +713,23 @@ class ProfileRetrieveUpdateAPIView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, *args, **kwargs):
+        """
+        Delete  User Account. ONly permitted by the user
+        """
+
+        # Retrieve the profile of the specified user
+        user = get_object_or_404(CustomUser, pk=pk)
+
+        # Check if the requesting user is the owner of the profile
+        self.check_object_permissions(request, user)
+
+        # Delete the user account
+        user.delete()
+
+        return Response({"detail": "User account deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
     
 # class WorkoutGroupAPIView(APIView):
 #     """
