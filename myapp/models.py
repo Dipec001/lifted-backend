@@ -167,6 +167,7 @@ class UserFollowing(models.Model):
 
 class WorkoutGroup(models.Model):
     workout_id = models.UUIDField(default=uuid4, editable=False, unique=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
 
 class WorkoutSession(models.Model):
     session_id = models.UUIDField(default=uuid4, editable=False, unique=True)
@@ -192,8 +193,6 @@ class WorkoutSet(models.Model):
     weight = models.PositiveIntegerField()
     avg_heart_rate = models.FloatField(null=True, blank=True)
     workout_session = models.ForeignKey(WorkoutSession, on_delete=models.CASCADE, related_name='sets')
-
-
 
 
 class CustomWorkout(models.Model):

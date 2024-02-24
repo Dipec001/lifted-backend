@@ -758,8 +758,8 @@ class WorkoutGroupAPIView(APIView):
     def get(self, request):
         try:
             user = request.user
-            workout_groups = WorkoutGroup.objects.filter(workoutsession__group__user=user).distinct()
-            response_data = []
+            workout_groups = WorkoutGroup.objects.filter(user=user)
+            response_data = {"workout_sessions": []}  # Wrap the list in a dictionary
 
             for group in workout_groups:
                 workout_sessions = []
@@ -795,14 +795,15 @@ class WorkoutGroupAPIView(APIView):
                         "sets": sets
                     })
 
-                response_data.append({"workout_sessions": workout_sessions})
+                response_data["workout_sessions"].append(workout_sessions)  # Append to the list in the dictionary
 
-            return JsonResponse(response_data, status=200)
+            return JsonResponse(response_data, status=200, safe=False)  # Set safe parameter to False
 
         except Exception as e:
             return JsonResponse({"detail": str(e)}, status=400)
         
     def post(self, request):
+        user = request.user
         try:
             data = request.data.get('workout_session')  # Access 'workout_session' key
 
@@ -810,7 +811,7 @@ class WorkoutGroupAPIView(APIView):
                 return JsonResponse({"detail": "Workout session data is required."}, status=400)
 
             with transaction.atomic():
-                workout_group = WorkoutGroup.objects.create()
+                workout_group = WorkoutGroup.objects.create(user=user)
 
                 for session_data in data:  # Iterate over each workout session
                     start_time = session_data.get('start_time')
