@@ -163,9 +163,25 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = "/static/"
+# URL to use when referring to static files located in STATIC_ROOT.
+STATIC_URL = '/static/'
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+# Additional locations of static files
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+    # Add other directories if needed
+]
+
+# The absolute path to the directory where collectstatic will collect static files.
+STATIC_ROOT = os.path.join(BASE_DIR, 'collected_static')
+
+# Turn on WhiteNoise storage backend that takes care of compressing static files
+# and creating unique names for each version so they can safely be cached forever.
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# STATIC_URL = "/static/"
+
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # WHITENOISE_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
