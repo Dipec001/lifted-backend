@@ -28,7 +28,7 @@ class OnboardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id','full_name','height', 'height_measurement', 'weight', 'height_measurement', 'date_of_birth', 'arm_choice', 'bio', 'profile_photo', 'followers_count', 'posts_count','interactions_count','username']
+        fields = ['id','full_name','height', 'height_measurement', 'weight', 'weight_measurement', 'date_of_birth', 'arm_choice', 'bio', 'profile_photo', 'followers_count', 'posts_count','interactions_count','username']
         read_only_fields = ['email']  # Make the email field read-only
 
 
